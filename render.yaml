@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: atomic-view-server
+    env: python
+    buildCommand: ""
+    startCommand: "python main.py"
+    plan: free
