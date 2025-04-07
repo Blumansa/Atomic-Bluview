@@ -34,9 +34,8 @@ def nettoyer_texte(text):
 def similarite_mot(mot, liste):
     return difflib.get_close_matches(mot, liste, n=1, cutoff=0.8)
 
-def detecter_infos(image):
-    raw_text = pytesseract.image_to_string(image)
-    cleaned = nettoyer_texte(raw_text)
+def detecter_infos(texte):
+    cleaned = nettoyer_texte(texte)
 
     paire_detectee = "Non détectée"
     for paire in PAIRES:
@@ -64,7 +63,12 @@ def analyze():
     file = request.files['screenshot']
     image = Image.open(file.stream)
 
-    paire, timeframe, signal_visible = detecter_infos(image)
+    # DEBUG MODE OCR BRUT
+    raw_text = pytesseract.image_to_string(image)
+    print("🧠 TEXTE OCR BRUT :")
+    print(raw_text)
+
+    paire, timeframe, signal_visible = detecter_infos(raw_text)
 
     result = {
         'structure': 'MSS haussier confirmé',
@@ -87,4 +91,5 @@ def analyze():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
+
 
