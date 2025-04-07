@@ -1,7 +1,6 @@
-services:
-  - type: web
-    name: atomic-view-server
-    env: python
-    buildCommand: ""
-    startCommand: "python main.py"
-    plan: free
+build:
+  commands:
+    start: |
+      apt-get update && apt-get install -y tesseract-ocr
+      pip install -r requirements.txt
+
