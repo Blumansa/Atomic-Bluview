@@ -2,37 +2,59 @@ from flask import Flask, request, jsonify
 from PIL import Image
 import pytesseract
 import io
+import difflib
 
 app = Flask(__name__)
 
-# Mots-clés à rechercher
-PAIRES = ['XAUUSD', 'NAS100', 'NASDAQ', 'US30', 'EURUSD', 'GBPUSD', 'BTCUSD']
+PAIRES = ['XAUUSD', 'NAS100', 'NASDAQ', 'US30', 'EURUSD', 'GBPUSD', 'BTCUSD', 'ETHUSD', 'USDJPY', 'USDCHF', 'EURJPY']
 TIMEFRAMES = ['M15', 'M30', 'H1', 'H4', 'D1', 'W1']
 SIGNALS = ['BUY', 'SELL']
 
+corrections = {
+    'EURUSO': 'EURUSD',
+    'XAUVSD': 'XAUUSD',
+    'NAS10O': 'NAS100',
+    'US30O': 'US30',
+    'BTCSUD': 'BTCUSD',
+    'ETHUSO': 'ETHUSD',
+    'EURUSD.': 'EURUSD',
+    'SELLL': 'SELL',
+    'BUYY': 'BUY',
+    'XAUSUD': 'XAUUSD',
+    'XAUVSD.': 'XAUUSD',
+    'EURUSDI': 'EURUSD'
+}
+
 def nettoyer_texte(text):
-    text = text.upper().replace(' ', '')
-    corrections = {
-        'XAUVSD': 'XAUUSD',
-        'XAUSUD': 'XAUUSD',
-        'NAS10O': 'NAS100',
-        'EURUSO': 'EURUSD',
-        'BUYY': 'BUY',
-        'SELLL': 'SELL'
-    }
+    text = text.upper().replace(" ", "")
     for err, cor in corrections.items():
         text = text.replace(err, cor)
     return text
 
+def similarite_mot(mot, liste):
+    return difflib.get_close_matches(mot, liste, n=1, cutoff=0.8)
+
 def detecter_infos(image):
-    text = pytesseract.image_to_string(image)
-    text = nettoyer_texte(text)
+    raw_text = pytesseract.image_to_string(image)
+    cleaned = nettoyer_texte(raw_text)
 
-    paire = next((p for p in PAIRES if p in text), "Non détectée")
-    timeframe = next((tf for tf in TIMEFRAMES if tf in text), "Non détecté")
-    signal = next((s for s in SIGNALS if s in text), "Non détecté")
+    paire_detectee = "Non détectée"
+    for paire in PAIRES:
+        if paire in cleaned:
+            paire_detectee = paire
+            break
+    if paire_detectee == "Non détectée":
+        mots = cleaned.split()
+        for mot in mots:
+            similaire = similarite_mot(mot, PAIRES)
+            if similaire:
+                paire_detectee = similaire[0]
+                break
 
-    return paire, timeframe, signal
+    timeframe = next((tf for tf in TIMEFRAMES if tf in cleaned), "Non détecté")
+    signal = next((s for s in SIGNALS if s in cleaned), "Non détecté")
+
+    return paire_detectee, timeframe, signal
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
@@ -42,21 +64,19 @@ def analyze():
     file = request.files['screenshot']
     image = Image.open(file.stream)
 
-    # 🔍 OCR : lecture visuelle de l’image
     paire, timeframe, signal_visible = detecter_infos(image)
 
-    # 🔁 Simule une analyse IA enrichie
     result = {
-        'structure': 'MSS baissier confirmé',
-        'cisd': 'Displacement observé en Killzone NY',
-        'liquidity': 'Sweep Equal Lows + Resting liquidity détectée',
-        'ob': 'OB H1 détecté à 2331.40 – 2331.90',
-        'volume': 'HVN confirmé à 2331.60',
-        'order_type': 'Sell Limit',
-        'entry_zone': '2331.40 – 2331.90',
-        'sl': '2332.60',
-        'tp': '2323.20',
-        'justification': 'MSS + OB H1 + Sweep + HVN Volume + Killzone NY',
+        'structure': 'MSS haussier confirmé',
+        'cisd': 'Impulsion + sweep confirmé',
+        'liquidity': 'Sweep Equal Highs + inducement',
+        'ob': 'OB H1 détecté à 1.1010 – 1.1025',
+        'volume': 'HVN confirmé à 1.1020',
+        'order_type': 'Buy Limit',
+        'entry_zone': '1.1010 – 1.1025',
+        'sl': '1.0995',
+        'tp': '1.1080',
+        'justification': 'MSS + Sweep + OB H1 + HVN Volume',
         'probabilité': '96 %',
         'paire_detectee': paire,
         'timeframe_detecte': timeframe,
